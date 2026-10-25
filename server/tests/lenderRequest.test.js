@@ -212,7 +212,7 @@ describe('POST /api/lender-requests/documents/:slot', () => {
 
 describe('DELETE /api/lender-requests/documents/:slot', () => {
     it('returns 200, empties the slot and deletes the file', async () => {
-        const existing = fakeRequest({ proofOfAddress: createStoredFile('old-bill.pdf') });
+        const existing = fakeRequest({ proofOfAddress: createStoredFile('old-addressproof.pdf') });
         LenderRequest.findOne.mockResolvedValue(existing);
 
         const response = await request(app)
@@ -222,7 +222,7 @@ describe('DELETE /api/lender-requests/documents/:slot', () => {
         expect(response.status).toBe(200);
         expect(existing.proofOfAddress).toBeUndefined();
         expect(existing.save).toHaveBeenCalledOnce();
-        expect(uploadedFiles()).not.toContain('old-bill.pdf');
+        expect(uploadedFiles()).not.toContain('old-addressproof.pdf');
     });
 
     it('returns 401 when not logged in', async () => {
@@ -278,13 +278,13 @@ describe('DELETE /api/lender-requests/documents/:slot', () => {
 
 const incompleteRequests = [
     { documents: { idDocument: { originalName: 'id.pdf' } }, message: 'Please upload your proof of address' },
-    { documents: { proofOfAddress: { originalName: 'bill.pdf' } }, message: 'Please upload your ID document' },
+    { documents: { proofOfAddress: { originalName: 'addressproof.pdf' } }, message: 'Please upload your ID document' },
     { documents: {}, message: 'Please upload your ID document and proof of address' }
 ];
 
 describe('POST /api/lender-requests/submit', () => {
     it('returns 200 and changes the status to pending when both documents are uploaded', async () => {
-        const draft = fakeRequest({ idDocument: { originalName: 'id.pdf' }, proofOfAddress: { originalName: 'bill.pdf' } });
+        const draft = fakeRequest({ idDocument: { originalName: 'id.pdf' }, proofOfAddress: { originalName: 'addressproof.pdf' } });
         LenderRequest.findOne.mockResolvedValue(draft);
 
         const response = await request(app)
@@ -330,7 +330,7 @@ describe('POST /api/lender-requests/submit', () => {
     });
 
     it('returns 409 when the request was already submitted', async () => {
-        const submitted = fakeRequest({ status: 'pending', idDocument: { originalName: 'id.pdf' }, proofOfAddress: { originalName: 'bill.pdf' } });
+        const submitted = fakeRequest({ status: 'pending', idDocument: { originalName: 'id.pdf' }, proofOfAddress: { originalName: 'addressproof.pdf' } });
         LenderRequest.findOne.mockResolvedValue(submitted);
 
         const response = await request(app)
@@ -344,7 +344,7 @@ describe('POST /api/lender-requests/submit', () => {
     it.each(['findOne', 'save'])(
         'returns 500 when %s fails',
         async (operation) => {
-        const draft = fakeRequest({ idDocument: { originalName: 'id.pdf' }, proofOfAddress: { originalName: 'bill.pdf' } });
+        const draft = fakeRequest({ idDocument: { originalName: 'id.pdf' }, proofOfAddress: { originalName: 'addressproof.pdf' } });
         LenderRequest.findOne.mockResolvedValue(draft);
         if (operation === 'findOne') LenderRequest.findOne.mockRejectedValue(new Error('Database unavailable'));
         if (operation === 'save') draft.save.mockRejectedValue(new Error('Database unavailable'));

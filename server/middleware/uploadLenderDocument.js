@@ -16,6 +16,10 @@ const ALLOWED_TYPES = {
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
+// CLOUDINARY: switch to the line below and delete the disk storage (and UPLOAD_DIR / fs.mkdirSync).
+// const storage = multer.memoryStorage();
+
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, UPLOAD_DIR);

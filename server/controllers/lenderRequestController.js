@@ -3,6 +3,9 @@ import path from 'node:path';
 import { LenderRequest } from '../models/LenderRequest.js';
 import { UPLOAD_DIR } from '../middleware/uploadLenderDocument.js';
 
+// CLOUDINARY: uncomment when Cloudinary is set up.
+// import { uploadToCloudinary, deleteFromCloudinary } from '../config/cloudinary.js';
+
 const SLOTS = ['idDocument', 'proofOfAddress'];
 
 // GET /api/lender-requests
@@ -30,10 +33,13 @@ export async function uploadDocument(req, res, next) {
             return res.status(409).json({ message: "Your request was already submitted and can no longer be changed" });
         }
 
+        // CLOUDINARY: uncomment, and use uploaded.public_id as storedName below.
+        // const uploaded = await uploadToCloudinary(req.file.buffer);
         const oldFile = request[req.params.slot];
         request[req.params.slot] = {
             originalName: req.file.originalname,
             storedName: req.file.filename,
+            // CLOUDINARY: storedName: uploaded.public_id,
             docType: req.file.mimetype,
             size: req.file.size
         };
@@ -66,6 +72,7 @@ export async function removeDocument(req, res, next) {
         next(error);
     }
 }
+
 // POST /api/lender-requests/submit
 export async function submitRequest(req, res, next) {
     try {
@@ -75,7 +82,6 @@ export async function submitRequest(req, res, next) {
         if (!request.idDocument && !request.proofOfAddress) return res.status(400).json({ message: "Please upload your ID document and proof of address" });
         if (!request.idDocument) return res.status(400).json({ message: "Please upload your ID document" });
         if (!request.proofOfAddress) return res.status(400).json({ message: "Please upload your proof of address" });
-
 
         request.status = 'pending';
         await request.save();
@@ -93,6 +99,8 @@ function findOpenRequest(userId) {
 async function deleteStoredFile(storedName) {
     try {
         await fs.unlink(path.join(UPLOAD_DIR, storedName));
+        // CLOUDINARY: replace the line above with:
+        // await deleteFromCloudinary(storedName);
     } catch (error) {
         if (error.code !== 'ENOENT') console.error("Could not delete file:", error.message);
     }
