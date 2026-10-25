@@ -356,3 +356,42 @@ describe('POST /api/lender-requests/submit', () => {
         expect(response.status).toBe(500);
     });
 });
+
+const applyRequests = [
+    { method: 'post', url: '/documents/idDocument', withFile: true },
+    { method: 'delete', url: '/documents/idDocument', withFile: false },
+    { method: 'post', url: '/submit', withFile: false }
+];
+
+describe('Only members can apply to become a lender', () => {
+    describe.each([
+        { role: 'lender', message: 'You are already a verified lender' },
+        { role: 'admin', message: 'Admins cannot apply to become a lender' }
+    ])('as $role', ({ role, message }) => {
+        it.each(applyRequests)('returns 403 for $method $url', async ({ method, url, withFile }) => {
+            let req = request(app)[method](`${BASE_URL}${url}`)
+                .set('x-user-id', USER_ID)
+                .set('x-user-role', role);
+            if (withFile) req = req.attach('file', Buffer.from('fake pdf'), 'passport.pdf');
+
+            const response = await req;
+
+            expect(response.status).toBe(403);
+            expect(response.body.message).toBe(message);
+            expect(LenderRequest.findOne).not.toHaveBeenCalled();
+            expect(uploadedFiles()).toHaveLength(0);
+        });
+    });
+
+    it('still lets a lender view their own request', async () => {
+        LenderRequest.findOne.mockReturnValue({ sort: vi.fn().mockResolvedValue({ user: USER_ID, status: 'approved' }) });
+
+        const response = await request(app)
+            .get(BASE_URL)
+            .set('x-user-id', USER_ID)
+            .set('x-user-role', 'lender');
+
+        expect(response.status).toBe(200);
+        expect(response.body.status).toBe('approved');
+    });
+});
