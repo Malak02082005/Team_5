@@ -3,7 +3,7 @@ CLOUDINARY: not active yet. When the team sets up Cloudinary:
 1. npm install cloudinary   (inside server)
 2. Add to .env: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
 3. Validate them in config/env.js like BACKEND_PORT and uncomment the code below.
-4. Follow the "CLOUDINARY:" notes in middleware/uploadLenderDocument.js and controllers/lenderRequestController.js.
+4. Follow the "CLOUDINARY:" notes in middleware/uploadLenderDocument.js and controllers/lenderRequestController.js. and adminLenderRequestController.js
 
 Lender documents are ID cards and proof of address, so they are uploaded as "authenticated" (private):
 they can only be opened through a signed link created by the server, never by a public URL.
