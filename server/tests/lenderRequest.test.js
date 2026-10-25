@@ -12,7 +12,8 @@ vi.mock('../models/LenderRequest.js', () => ({
 }));
 
 const MEMBER_ID = '64b000000000000000000001';
-const BASE_URL = '/api/lender-requests/me';
+const BASE_URL = '/api/lender-requests';
+
 
 // Before each test, this stores the list of files already in the uploads folder. Later, tells me which files the test created.
 let filesBefore = [];
@@ -274,3 +275,85 @@ describe('DELETE /api/lender-requests/me/documents/:slot', () => {
         expect(response.status).toBe(500);
     });
 });
+
+const incompleteRequests = [
+    { documents: { idDocument: { originalName: 'id.pdf' } }, message: 'Please upload your proof of address' },
+    { documents: { proofOfAddress: { originalName: 'bill.pdf' } }, message: 'Please upload your ID document' },
+    { documents: {}, message: 'Please upload your ID document and proof of address' }
+];
+
+describe('POST /api/lender-requests/me/submit', () => {
+    it('returns 200 and changes the status to pending when both documents are uploaded', async () => {
+        const draft = fakeRequest({ idDocument: { originalName: 'id.pdf' }, proofOfAddress: { originalName: 'bill.pdf' } });
+        LenderRequest.findOne.mockResolvedValue(draft);
+
+        const response = await request(app)
+            .post(`${BASE_URL}/submit`)
+            .set('x-member-id', MEMBER_ID);
+
+        expect(response.status).toBe(200);
+        expect(response.body.status).toBe('pending');
+        expect(draft.status).toBe('pending');
+        expect(draft.save).toHaveBeenCalledOnce();
+        expect(LenderRequest.findOne).toHaveBeenCalledWith({ member: MEMBER_ID, status: { $in: ['draft', 'pending'] } });
+    });
+
+    it('returns 401 when not logged in', async () => {
+        const response = await request(app).post(`${BASE_URL}/submit`);
+
+        expect(response.status).toBe(401);
+        expect(LenderRequest.findOne).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 when the member has no request', async () => {
+        const response = await request(app)
+            .post(`${BASE_URL}/submit`)
+            .set('x-member-id', MEMBER_ID);
+
+        expect(response.status).toBe(404);
+    });
+
+    it.each(incompleteRequests)(
+        'returns 400 with "$message"',
+        async ({ documents, message }) => {
+        const draft = fakeRequest(documents);
+        LenderRequest.findOne.mockResolvedValue(draft);
+
+        const response = await request(app)
+            .post(`${BASE_URL}/submit`)
+            .set('x-member-id', MEMBER_ID);
+
+        expect(response.status).toBe(400);
+        expect(response.body.message).toBe(message);
+        expect(draft.status).toBe('draft');
+        expect(draft.save).not.toHaveBeenCalled();
+    });
+
+    it('returns 409 when the request was already submitted', async () => {
+        const submitted = fakeRequest({ status: 'pending', idDocument: { originalName: 'id.pdf' }, proofOfAddress: { originalName: 'bill.pdf' } });
+        LenderRequest.findOne.mockResolvedValue(submitted);
+
+        const response = await request(app)
+            .post(`${BASE_URL}/submit`)
+            .set('x-member-id', MEMBER_ID);
+
+        expect(response.status).toBe(409);
+        expect(submitted.save).not.toHaveBeenCalled();
+    });
+
+    it.each(['findOne', 'save'])(
+        'returns 500 when %s fails',
+        async (operation) => {
+        const draft = fakeRequest({ idDocument: { originalName: 'id.pdf' }, proofOfAddress: { originalName: 'bill.pdf' } });
+        LenderRequest.findOne.mockResolvedValue(draft);
+        if (operation === 'findOne') LenderRequest.findOne.mockRejectedValue(new Error('Database unavailable'));
+        if (operation === 'save') draft.save.mockRejectedValue(new Error('Database unavailable'));
+
+        const response = await request(app)
+            .post(`${BASE_URL}/submit`)
+            .set('x-member-id', MEMBER_ID);
+
+        expect(response.status).toBe(500);
+    });
+});
+

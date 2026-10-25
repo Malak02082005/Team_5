@@ -5,7 +5,7 @@ import { UPLOAD_DIR } from '../middleware/uploadLenderDocument.js';
 
 const SLOTS = ['idDocument', 'proofOfAddress'];
 
-// GET /api/lender-requests/me
+// GET /api/lender-requests
 export async function getMyRequest(req, res, next) {
     try {
         const request = await LenderRequest.findOne({ member: req.user.id }).sort({ createdAt: -1 });
@@ -15,7 +15,7 @@ export async function getMyRequest(req, res, next) {
     }
 }
 
-// POST /api/lender-requests/me/documents/:slot
+// POST /api/lender-requests/documents/:slot
 export async function uploadDocument(req, res, next) {
     try {
         if (!req.file) return res.status(400).json({ message: "Please choose a file to upload" });
@@ -47,7 +47,7 @@ export async function uploadDocument(req, res, next) {
     }
 }
 
-// DELETE /api/lender-requests/me/documents/:slot
+// DELETE /api/lender-requests/documents/:slot
 export async function removeDocument(req, res, next) {
     try {
         if (!SLOTS.includes(req.params.slot)) return res.status(400).json({ message: "Invalid document slot" });
@@ -60,6 +60,25 @@ export async function removeDocument(req, res, next) {
         request[req.params.slot] = undefined;
         await request.save();
         await deleteStoredFile(storedName);
+
+        res.status(200).json(request);
+    } catch (error) {
+        next(error);
+    }
+}
+// POST /api/lender-requests/submit
+export async function submitRequest(req, res, next) {
+    try {
+        const request = await findOpenRequest(req.user.id);
+        if (!request) return res.status(404).json({ message: "You have no request to submit" });
+        if (request.status !== 'draft') return res.status(409).json({ message: "Your request was already submitted" });
+        if (!request.idDocument && !request.proofOfAddress) return res.status(400).json({ message: "Please upload your ID document and proof of address" });
+        if (!request.idDocument) return res.status(400).json({ message: "Please upload your ID document" });
+        if (!request.proofOfAddress) return res.status(400).json({ message: "Please upload your proof of address" });
+
+
+        request.status = 'pending';
+        await request.save();
 
         res.status(200).json(request);
     } catch (error) {
