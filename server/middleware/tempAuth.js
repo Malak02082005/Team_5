@@ -1,10 +1,9 @@
-// TEMPORARY: will replace it with Martin's 
+// TEMPORARY: replace with Martin's auth middleware once it is merged.
 export const tempAuth = (req, res, next) => {
-    const memberId = req.header('x-member-id');
-    if (!memberId) {
+    const userId = req.header('x-user-id');
+    if (!userId) {
         return res.status(401).json({ message: 'Not logged in' });
     }
-    req.user = { id: memberId };
-
+    req.user = { id: userId };
     next();
 };

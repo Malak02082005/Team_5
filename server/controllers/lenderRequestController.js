@@ -8,7 +8,7 @@ const SLOTS = ['idDocument', 'proofOfAddress'];
 // GET /api/lender-requests
 export async function getMyRequest(req, res, next) {
     try {
-        const request = await LenderRequest.findOne({ member: req.user.id }).sort({ createdAt: -1 });
+        const request = await LenderRequest.findOne({ user: req.user.id }).sort({ createdAt: -1 });
         res.status(200).json(request);
     } catch (error) {
         next(error);
@@ -24,7 +24,7 @@ export async function uploadDocument(req, res, next) {
             return res.status(400).json({ message: "Invalid document slot" });
         }
 
-        const request = await findOpenRequest(req.user.id) || new LenderRequest({ member: req.user.id });
+        const request = await findOpenRequest(req.user.id) || new LenderRequest({ user: req.user.id });
         if (request.status !== 'draft') {
             await deleteStoredFile(req.file.filename);
             return res.status(409).json({ message: "Your request was already submitted and can no longer be changed" });
@@ -86,8 +86,8 @@ export async function submitRequest(req, res, next) {
     }
 }
 
-function findOpenRequest(memberId) {
-    return LenderRequest.findOne({ member: memberId, status: { $in: ['draft', 'pending'] } });
+function findOpenRequest(userId) {
+    return LenderRequest.findOne({ user: userId, status: { $in: ['draft', 'pending'] } });
 }
 
 async function deleteStoredFile(storedName) {

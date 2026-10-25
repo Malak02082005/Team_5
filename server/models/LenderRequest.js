@@ -26,9 +26,9 @@ const documentSchema = new mongoose.Schema(
 
 const lenderRequestSchema = new mongoose.Schema(
     {
-        member: {
+        user: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'Member',
+            ref: 'User',
             required: true
         },
         status: {
@@ -38,7 +38,7 @@ const lenderRequestSchema = new mongoose.Schema(
         },
         idDocument: {type: documentSchema},
         proofOfAddress: {type: documentSchema},
-        reviewedBy: {type: mongoose.Schema.Types.ObjectId, ref: 'Admin'},
+        reviewedBy: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
         reviewedAt: {type: Date},
         rejectionReason: {type: String}
     },
@@ -47,7 +47,7 @@ const lenderRequestSchema = new mongoose.Schema(
 
 lenderRequestSchema.index({ status: 1 });
 lenderRequestSchema.index(
-    { member: 1 },
+    { user: 1 },
     { unique: true, partialFilterExpression: { status: { $in: ['draft', 'pending'] } } }
 );
 

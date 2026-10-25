@@ -11,7 +11,7 @@ vi.mock('../models/LenderRequest.js', () => ({
     LenderRequest: Object.assign(vi.fn(), { findOne: vi.fn() })
 }));
 
-const MEMBER_ID = '64b000000000000000000001';
+const USER_ID = '64b000000000000000000001';
 const BASE_URL = '/api/lender-requests';
 
 
@@ -20,7 +20,7 @@ let filesBefore = [];
 
 // Builds a fake request document the way Mongoose would return it.
 function fakeRequest(fields = {}) {
-    return { member: MEMBER_ID, status: 'draft', save: vi.fn().mockResolvedValue(), ...fields };
+    return { user: USER_ID, status: 'draft', save: vi.fn().mockResolvedValue(), ...fields };
 }
 
 // Puts a real file in the upload folder, so we can check that the controller deletes it.
@@ -49,7 +49,7 @@ afterEach(() => {
     }
 });
 
-describe('GET /api/lender-requests/me', () => {
+describe('GET /api/lender-requests', () => {
     it('returns 401 when not logged in', async () => {
         const response = await request(app).get(BASE_URL);
 
@@ -57,26 +57,26 @@ describe('GET /api/lender-requests/me', () => {
         expect(LenderRequest.findOne).not.toHaveBeenCalled();
     });
 
-    it('returns 200 with the newest request of the member', async () => {
-        const sort = vi.fn().mockResolvedValue({ member: MEMBER_ID, status: 'draft' });
+    it('returns 200 with the newest request of the user', async () => {
+        const sort = vi.fn().mockResolvedValue({ user: USER_ID, status: 'draft' });
         LenderRequest.findOne.mockReturnValue({ sort });
 
         const response = await request(app)
             .get(BASE_URL)
-            .set('x-member-id', MEMBER_ID);
+            .set('x-user-id', USER_ID);
 
         expect(response.status).toBe(200);
         expect(response.body.status).toBe('draft');
-        expect(LenderRequest.findOne).toHaveBeenCalledWith({ member: MEMBER_ID });
+        expect(LenderRequest.findOne).toHaveBeenCalledWith({ user: USER_ID });
         expect(sort).toHaveBeenCalledWith({ createdAt: -1 });
     });
 
-    it('returns 200 with null when the member has no request', async () => {
+    it('returns 200 with null when the user has no request', async () => {
         LenderRequest.findOne.mockReturnValue({ sort: vi.fn().mockResolvedValue(null) });
 
         const response = await request(app)
             .get(BASE_URL)
-            .set('x-member-id', MEMBER_ID);
+            .set('x-user-id', USER_ID);
 
         expect(response.status).toBe(200);
         expect(response.body).toBeNull();
@@ -87,7 +87,7 @@ describe('GET /api/lender-requests/me', () => {
 
         const response = await request(app)
             .get(BASE_URL)
-            .set('x-member-id', MEMBER_ID);
+            .set('x-user-id', USER_ID);
 
         expect(response.status).toBe(500);
     });
@@ -99,17 +99,17 @@ const invalidFiles = [
     { name: 'huge.pdf', content: Buffer.alloc(6 * 1024 * 1024), message: 'File is too large (max 5 MB)' }
 ];
 
-describe('POST /api/lender-requests/me/documents/:slot', () => {
+describe('POST /api/lender-requests/documents/:slot', () => {
     it.each(['idDocument', 'proofOfAddress'])(
         'returns 200 and creates a draft request when uploading %s for the first time',
         async (slot) => {
         const response = await request(app)
             .post(`${BASE_URL}/documents/${slot}`)
-            .set('x-member-id', MEMBER_ID)
+            .set('x-user-id', USER_ID)
             .attach('file', Buffer.from('fake pdf'), 'passport.pdf');
 
         expect(response.status).toBe(200);
-        expect(LenderRequest).toHaveBeenCalledWith({ member: MEMBER_ID });
+        expect(LenderRequest).toHaveBeenCalledWith({ user: USER_ID });
 
         const savedRequest = LenderRequest.mock.results[0].value;
         expect(savedRequest.save).toHaveBeenCalledOnce();
@@ -125,7 +125,7 @@ describe('POST /api/lender-requests/me/documents/:slot', () => {
 
         const response = await request(app)
             .post(`${BASE_URL}/documents/idDocument`)
-            .set('x-member-id', MEMBER_ID)
+            .set('x-user-id', USER_ID)
             .attach('file', Buffer.from('new image'), 'new-id.png');
 
         expect(response.status).toBe(200);
@@ -148,7 +148,7 @@ describe('POST /api/lender-requests/me/documents/:slot', () => {
     it('returns 400 when no file is sent', async () => {
         const response = await request(app)
             .post(`${BASE_URL}/documents/idDocument`)
-            .set('x-member-id', MEMBER_ID);
+            .set('x-user-id', USER_ID);
 
         expect(response.status).toBe(400);
         expect(response.body.message).toBe('Please choose a file to upload');
@@ -158,7 +158,7 @@ describe('POST /api/lender-requests/me/documents/:slot', () => {
     it('returns 400 for an invalid slot and does not keep the file', async () => {
         const response = await request(app)
             .post(`${BASE_URL}/documents/banana`)
-            .set('x-member-id', MEMBER_ID)
+            .set('x-user-id', USER_ID)
             .attach('file', Buffer.from('fake pdf'), 'passport.pdf');
 
         expect(response.status).toBe(400);
@@ -172,7 +172,7 @@ describe('POST /api/lender-requests/me/documents/:slot', () => {
         async (file) => {
         const response = await request(app)
             .post(`${BASE_URL}/documents/idDocument`)
-            .set('x-member-id', MEMBER_ID)
+            .set('x-user-id', USER_ID)
             .attach('file', file.content, file.name);
 
         expect(response.status).toBe(400);
@@ -187,7 +187,7 @@ describe('POST /api/lender-requests/me/documents/:slot', () => {
 
         const response = await request(app)
             .post(`${BASE_URL}/documents/idDocument`)
-            .set('x-member-id', MEMBER_ID)
+            .set('x-user-id', USER_ID)
             .attach('file', Buffer.from('fake pdf'), 'passport.pdf');
 
         expect(response.status).toBe(409);
@@ -202,7 +202,7 @@ describe('POST /api/lender-requests/me/documents/:slot', () => {
 
         const response = await request(app)
             .post(`${BASE_URL}/documents/idDocument`)
-            .set('x-member-id', MEMBER_ID)
+            .set('x-user-id', USER_ID)
             .attach('file', Buffer.from('fake pdf'), 'passport.pdf');
 
         expect(response.status).toBe(500);
@@ -210,14 +210,14 @@ describe('POST /api/lender-requests/me/documents/:slot', () => {
     });
 });
 
-describe('DELETE /api/lender-requests/me/documents/:slot', () => {
+describe('DELETE /api/lender-requests/documents/:slot', () => {
     it('returns 200, empties the slot and deletes the file', async () => {
         const existing = fakeRequest({ proofOfAddress: createStoredFile('old-bill.pdf') });
         LenderRequest.findOne.mockResolvedValue(existing);
 
         const response = await request(app)
             .delete(`${BASE_URL}/documents/proofOfAddress`)
-            .set('x-member-id', MEMBER_ID);
+            .set('x-user-id', USER_ID);
 
         expect(response.status).toBe(200);
         expect(existing.proofOfAddress).toBeUndefined();
@@ -234,7 +234,7 @@ describe('DELETE /api/lender-requests/me/documents/:slot', () => {
     it('returns 400 for an invalid slot', async () => {
         const response = await request(app)
             .delete(`${BASE_URL}/documents/banana`)
-            .set('x-member-id', MEMBER_ID);
+            .set('x-user-id', USER_ID);
 
         expect(response.status).toBe(400);
         expect(LenderRequest.findOne).not.toHaveBeenCalled();
@@ -247,7 +247,7 @@ describe('DELETE /api/lender-requests/me/documents/:slot', () => {
 
         const response = await request(app)
             .delete(`${BASE_URL}/documents/idDocument`)
-            .set('x-member-id', MEMBER_ID);
+            .set('x-user-id', USER_ID);
 
         expect(response.status).toBe(404);
     });
@@ -258,7 +258,7 @@ describe('DELETE /api/lender-requests/me/documents/:slot', () => {
 
         const response = await request(app)
             .delete(`${BASE_URL}/documents/idDocument`)
-            .set('x-member-id', MEMBER_ID);
+            .set('x-user-id', USER_ID);
 
         expect(response.status).toBe(409);
         expect(submitted.save).not.toHaveBeenCalled();
@@ -270,7 +270,7 @@ describe('DELETE /api/lender-requests/me/documents/:slot', () => {
 
         const response = await request(app)
             .delete(`${BASE_URL}/documents/idDocument`)
-            .set('x-member-id', MEMBER_ID);
+            .set('x-user-id', USER_ID);
 
         expect(response.status).toBe(500);
     });
@@ -282,20 +282,20 @@ const incompleteRequests = [
     { documents: {}, message: 'Please upload your ID document and proof of address' }
 ];
 
-describe('POST /api/lender-requests/me/submit', () => {
+describe('POST /api/lender-requests/submit', () => {
     it('returns 200 and changes the status to pending when both documents are uploaded', async () => {
         const draft = fakeRequest({ idDocument: { originalName: 'id.pdf' }, proofOfAddress: { originalName: 'bill.pdf' } });
         LenderRequest.findOne.mockResolvedValue(draft);
 
         const response = await request(app)
             .post(`${BASE_URL}/submit`)
-            .set('x-member-id', MEMBER_ID);
+            .set('x-user-id', USER_ID);
 
         expect(response.status).toBe(200);
         expect(response.body.status).toBe('pending');
         expect(draft.status).toBe('pending');
         expect(draft.save).toHaveBeenCalledOnce();
-        expect(LenderRequest.findOne).toHaveBeenCalledWith({ member: MEMBER_ID, status: { $in: ['draft', 'pending'] } });
+        expect(LenderRequest.findOne).toHaveBeenCalledWith({ user: USER_ID, status: { $in: ['draft', 'pending'] } });
     });
 
     it('returns 401 when not logged in', async () => {
@@ -308,7 +308,7 @@ describe('POST /api/lender-requests/me/submit', () => {
     it('returns 404 when the member has no request', async () => {
         const response = await request(app)
             .post(`${BASE_URL}/submit`)
-            .set('x-member-id', MEMBER_ID);
+            .set('x-user-id', USER_ID);
 
         expect(response.status).toBe(404);
     });
@@ -321,7 +321,7 @@ describe('POST /api/lender-requests/me/submit', () => {
 
         const response = await request(app)
             .post(`${BASE_URL}/submit`)
-            .set('x-member-id', MEMBER_ID);
+            .set('x-user-id', USER_ID);
 
         expect(response.status).toBe(400);
         expect(response.body.message).toBe(message);
@@ -335,7 +335,7 @@ describe('POST /api/lender-requests/me/submit', () => {
 
         const response = await request(app)
             .post(`${BASE_URL}/submit`)
-            .set('x-member-id', MEMBER_ID);
+            .set('x-user-id', USER_ID);
 
         expect(response.status).toBe(409);
         expect(submitted.save).not.toHaveBeenCalled();
@@ -351,9 +351,8 @@ describe('POST /api/lender-requests/me/submit', () => {
 
         const response = await request(app)
             .post(`${BASE_URL}/submit`)
-            .set('x-member-id', MEMBER_ID);
+            .set('x-user-id', USER_ID);
 
         expect(response.status).toBe(500);
     });
 });
-
